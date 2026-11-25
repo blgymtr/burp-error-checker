@@ -1,31 +1,44 @@
 # burp-error-checker
 
-Burp Suite'te **yüklenmeyen extension'lar** için kök neden teşhis aracı.
+Diagnoses the root cause of Burp Suite extensions that fail to load.
 
-Ne yapar:
+## What it does
 
-- Burp'un `user_options` / `UserConfig.json` içinden yüklenmemiş extension listesini okur
-- Her biri için sırayla test eder:
-  - **Dosya varlığı** (config'de gösterilen yol gerçekten var mı)
-  - **Jython syntax-only derleme** (python extension'lar — kod ÇALIŞTIRMAZ, sadece `compile()` çağrısı yapar)
-  - **JAR geçerliliği** (`jar tf` / `tar -tf`)
-- Sonucu Markdown rapor olarak yazar
+- Reads the not-loaded extension list from Burp `user_options` (via the MCP channel when Burp is running) or from `%APPDATA%\BurpSuite\UserConfig.json` (when Burp is closed)
+- For each failing extension it runs, in order:
+  1. **File existence** — does the path stored in the config actually exist on disk
+  2. **Jython syntax-only compile** (python extensions) — runs `compile()` only, never executes the extension
+  3. **JAR validity** (`jar tf` with a `tar -tf` fallback)
+- Writes a Markdown report
 
-Kullanım:
+## Usage
 
 ```bash
 node ext-error-diagnose.js
 ```
 
-Opsiyonel ortam değişkenleri:
+Optional environment variables:
 
-| Değişken | Anlamı |
+| Variable | Meaning |
 |---|---|
-| `BURP_JYTHON` | jython-standalone jar yolu (varsayılan: çalışma dizininde `jython-standalone-2.7.4.jar`) |
-| `DIAGNOSE_OUT` | rapor çıktı dosyası (varsayılan: `ext-error-report.md`) |
+| `BURP_JYTHON` | path to the jython-standalone JAR (default: `jython-standalone-2.7.4.jar` in the working directory) |
+| `DIAGNOSE_OUT` | report output file (default: `ext-error-report.md`) |
 
-MCP kanalı (çalışan Burp + MCP Server extension) varsa canlı config okur; yoksa `%APPDATA%\BurpSuite\UserConfig.json`'a düşer — yani Burp kapalıyken de çalışır.
+## A real-world case this tool covers
 
-Gereksinimler: Node.js, Java (Jython için), Burp Suite (test edilecek extension'lar kurulu).
+Jython 2.7 on Windows cannot `os.chdir()` into a directory whose path contains
+non-ASCII characters (e.g. a Turkish `Ö` in the username). If your Windows
+profile path contains such characters, **every Python-based Burp extension
+fails to load with `PosixModule.chdir` / `OSError(2)`**, while all Java
+extensions load fine. Workaround: start Burp with an ASCII-only `%APPDATA%`
+path (for example the Windows 8.3 short name of your profile folder).
 
-Lisans: MIT.
+## Requirements
+
+- Node.js
+- Java (for Jython)
+- Burp Suite with the extensions installed
+
+## License
+
+MIT

@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 // ext-error-diagnose.js -- Burp Suite'te yuklu olmayan extensionlar icin kok neden teshisi.
 //   node ext-error-diagnose.js
 // Testler: dosya varligi, Jython compile (syntax-only), jar gecerliligi, config yolu dogrulama.
@@ -47,7 +47,7 @@ function jarCheck(abs) {
     execFileSync('jar', ['tf', abs], { encoding: 'utf8', timeout: 60000 });
     return { jarOk: true, note: 'jar gecerli' };
   } catch (e) {
-    // jar tool yoksa tar ile dene
+    // fall back to tar if the jar tool is missing
     try {
       execFileSync('tar', ['-tf', abs], { encoding: 'utf8', timeout: 60000 });
       return { jarOk: true, note: 'jar gecerli (tar tf)' };
@@ -102,3 +102,4 @@ function jarCheck(abs) {
   console.log(md.join('\n'));
   console.log('\nrapor: ' + OUT);
 })();
+
