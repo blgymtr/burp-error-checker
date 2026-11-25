@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'">
+  <title>Burp Error Checker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header id="titlebar">
+    <div class="brand">
+      <span class="logo" id="logo"></span>
+      <span class="brand-name">Burp Error Checker</span>
+      <span class="ver" id="ver"></span>
+      <span class="demo-badge hidden" id="demoBadge" title="Running against a built-in example, not your real Burp settings">DEMO DATA</span>
+    </div>
+  </header>
+
+  <div id="toolbar">
+    <button class="btn primary" id="scanBtn" title="Scan again (F5)"><span class="ico" data-ico="refresh"></span><span class="lbl">Scan</span></button>
+    <button class="chip" id="configChip" title="Burp user settings file in use. Click to change it.">
+      <span class="ico" data-ico="file"></span><span id="configChipText">Looking for Burp settings…</span>
+    </button>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="copyBtn" disabled title="Copy the full report as Markdown"><span class="ico" data-ico="copy"></span><span class="lbl">Copy report</span></button>
+    <div class="menu-wrap">
+      <button class="btn ghost" id="exportBtn" disabled><span class="ico" data-ico="download"></span><span class="lbl">Export</span><span class="ico sm" data-ico="chevron"></span></button>
+      <div class="menu hidden" id="exportMenu">
+        <button data-fmt="html"><b>HTML page</b><small>Styled report, opens in any browser</small></button>
+        <button data-fmt="md"><b>Markdown</b><small>For GitHub issues and notes</small></button>
+        <button data-fmt="json"><b>JSON</b><small>Machine-readable result</small></button>
+      </div>
+    </div>
+    <button class="btn icon ghost" id="helpBtn" title="What does this app check?"><span class="ico" data-ico="help"></span></button>
+    <button class="btn icon ghost" id="settingsBtn" title="Settings"><span class="ico" data-ico="settings"></span></button>
+  </div>
+
+  <div id="progress" class="hidden"><div class="bar" id="progressBar"></div></div>
+
+  <main id="main">
+    <!-- Welcome / scanning -->
+    <section id="welcome" class="view">
+      <div class="hero">
+        <div class="hero-logo" id="heroLogo"></div>
+        <h1>Why won't my Burp extension load?</h1>
+        <p class="lead">Burp Error Checker reads your Burp Suite settings, finds every extension that is not loaded and tests its files the same way Burp does, so you see the real cause and how to fix it.</p>
+        <div class="scan-status" id="scanStatus"><span class="spinner"></span><span id="scanMsg">Starting…</span></div>
+        <div class="feature-grid">
+          <div class="feature"><span class="ico" data-ico="file"></span><b>Missing files</b><p>Deleted files, moved folders and BApp paths that went stale after an update.</p></div>
+          <div class="feature"><span class="ico" data-ico="box"></span><b>Broken JARs</b><p>Damaged archives, library JARs with no Burp entry point, wrong class names.</p></div>
+          <div class="feature"><span class="ico" data-ico="coffee"></span><b>Java version</b><p>Classes compiled for a newer Java than the one bundled with your Burp.</p></div>
+          <div class="feature"><span class="ico" data-ico="code"></span><b>Python syntax</b><p>Compiles every .py file with your real Jython 2.7 and spots Python 3 code.</p></div>
+          <div class="feature"><span class="ico" data-ico="package"></span><b>Missing modules</b><p>Imports Jython can't find, such as pip packages and C extensions.</p></div>
+          <div class="feature"><span class="ico" data-ico="settings"></span><b>Environment</b><p>Jython and JRuby setup, module folders and the Java runtime Burp uses.</p></div>
+        </div>
+        <p class="fine"><span class="ico sm" data-ico="lock"></span> Read-only and offline. Nothing in Burp is changed and nothing leaves your computer. Python code is compiled, never executed.</p>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="view hidden">
+      <div id="envRow"></div>
+
+      <div id="workspace">
+        <div id="listPane">
+          <div class="list-head">
+            <div class="seg" id="filters">
+              <button data-filter="problems" class="on">Needs attention <span class="count" id="cProblems">0</span></button>
+              <button data-filter="notloaded">Not loaded <span class="count" id="cNotLoaded">0</span></button>
+              <button data-filter="all">All <span class="count" id="cAll">0</span></button>
+            </div>
+            <div class="search">
+              <span class="ico sm" data-ico="search"></span>
+              <input id="search" type="search" placeholder="Filter extensions  (Ctrl+F)" spellcheck="false">
+            </div>
+          </div>
+          <div id="list" role="listbox" tabindex="0"></div>
+        </div>
+        <div id="detailPane">
+          <div id="detail"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="statusbar">
+    <span id="statusText">Ready</span>
+    <span class="spacer"></span>
+    <span id="statusRight"></span>
+  </footer>
+
+  <!-- Settings -->
+  <div class="modal-backdrop hidden" id="settingsModal">
+    <div class="modal" role="dialog" aria-labelledby="settingsTitle">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button class="btn icon ghost" data-close><span class="ico" data-ico="x"></span></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">Leave a field empty to detect it automatically. These only affect this checker; Burp's own settings are never changed.</p>
+        <label class="field">
+          <span>Burp user settings file</span>
+          <div class="pick"><input id="sConfig" spellcheck="false"><button class="btn" data-pick="config">Browse…</button></div>
+          <small>Usually <code id="sConfigHint">%APPDATA%\BurpSuite\UserConfig.json</code>. You can also pick a file saved with Burp's "Save user settings".</small>
+        </label>
+        <label class="field">
+          <span>Jython standalone JAR</span>
+          <div class="pick"><input id="sJython" spellcheck="false" placeholder="Use the JAR set in Burp"><button class="btn" data-pick="jython">Browse…</button></div>
+          <small>Overrides the JAR from Burp's settings, for example to test a different Jython version.</small>
+        </label>
+        <label class="field">
+          <span>Java executable for syntax checks</span>
+          <div class="pick"><input id="sJava" spellcheck="false" placeholder="Burp's bundled Java, then JAVA_HOME, then PATH"><button class="btn" data-pick="java">Browse…</button></div>
+        </label>
+        <label class="field">
+          <span>Burp Suite install folder</span>
+          <div class="pick"><input id="sBurp" spellcheck="false" placeholder="Detect automatically"><button class="btn" data-pick="burp">Browse…</button></div>
+          <small>Used to read which Java version Burp runs, for the JAR compatibility check.</small>
+        </label>
+        <label class="toggle"><input type="checkbox" id="sLoaded"><span class="track"></span><span><b>Analyze loaded extensions too</b><small>Also runs every check on extensions that already work.</small></span></label>
+        <label class="toggle"><input type="checkbox" id="sSkipJy"><span class="track"></span><span><b>Skip the Jython compile step</b><small>Faster, but Python files are only checked with simple rules.</small></span></label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" id="sReset">Reset</button>
+        <span class="spacer"></span>
+        <button class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary" id="sSave">Save and scan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help -->
+  <div class="modal-backdrop hidden" id="helpModal">
+    <div class="modal wide" role="dialog" aria-labelledby="helpTitle">
+      <div class="modal-head">
+        <h2 id="helpTitle">How the checks work</h2>
+        <button class="btn icon ghost" data-close><span class="ico" data-ico="x"></span></button>
+      </div>
+      <div class="modal-body help">
+        <p>Burp keeps the list of installed extensions in its user settings file. Each entry has the file Burp loads, the extension type and whether it is currently loaded. When an extension fails, Burp unticks it and shows the error once in its Errors tab. This app tells you why, without starting Burp.</p>
+        <h3>Status meanings</h3>
+        <ul class="legend">
+          <li><span class="pill error">Error</span> A definite problem that stops the extension from loading.</li>
+          <li><span class="pill warning">Warning</span> Something that very likely breaks it.</li>
+          <li><span class="pill unknown">No cause found</span> The files are fine. The extension is switched off, or fails while running (read its Errors tab in Burp).</li>
+          <li><span class="pill loaded">Loaded</span> Burp has it running.</li>
+        </ul>
+        <h3>Java extensions (.jar)</h3>
+        <p>The archive is opened and every class is read. Burp needs a class named <code>burp.BurpExtender</code> (legacy API) or a class implementing <code>burp.api.montoya.BurpExtension</code> (Montoya API). The class-file version is compared with the Java runtime bundled with Burp.</p>
+        <h3>Python extensions (.py)</h3>
+        <p>The main file and every local module it imports are compiled with the Jython JAR Burp is set to use. Compiling only checks syntax; no extension code runs. Imports are matched against Jython's standard library, the extension folder and Burp's "Folder for loading modules".</p>
+        <h3>Where the data comes from</h3>
+        <p>Burp writes the settings file when its settings change. If you just loaded or unloaded something in Burp, scan again to see the new state.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+  <script src="icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

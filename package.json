@@ -1,0 +1,44 @@
+{
+  "name": "burp-error-checker",
+  "productName": "Burp Error Checker",
+  "version": "2.0.0",
+  "description": "Find out why a Burp Suite extension will not load: missing files, broken JARs, Java version mismatches, Jython syntax errors and missing Python modules.",
+  "main": "src/main.js",
+  "bin": {
+    "burp-error-checker": "src/cli.js"
+  },
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "cli": "node src/cli.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "screenshots": "electron . --demo --screenshots docs/screenshots",
+    "dist": "electron-builder --win portable nsis"
+  },
+  "keywords": ["burp", "burp-suite", "extension", "jython", "diagnostic", "pentest", "bapp"],
+  "author": "blgymtr",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "io.github.blgymtr.burp-error-checker",
+    "productName": "Burp Error Checker",
+    "artifactName": "${productName}-${version}-${arch}-${target}.${ext}",
+    "files": ["src/**/*", "build/icon.png", "package.json", "LICENSE"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": ["portable", "nsis"],
+      "signAndEditExecutable": true
+    },
+    "portable": { "artifactName": "BurpErrorChecker-${version}-portable.exe" },
+    "nsis": {
+      "artifactName": "BurpErrorChecker-${version}-setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
