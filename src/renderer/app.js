@@ -14,7 +14,7 @@ const STATUS = {
   ok: { label: 'OK', color: 'var(--ok)', icon: 'ok' },
   info: { label: 'Info', color: 'var(--info)', icon: 'info' },
 };
-const ENV_ICON = { config: 'file', runtime: 'coffee', jython: 'python', pymodules: 'folder', javalibs: 'folder', jruby: 'ruby', checkerJava: 'code', jythonRun: 'code' };
+const ENV_ICON = { config: 'file', runtime: 'coffee', jython: 'python', pymodules: 'folder', javalibs: 'folder', jruby: 'ruby', checkerJava: 'code', jythonRun: 'code', nonascii: 'folder' };
 const TYPE_ICON = { java: 'java', python: 'python', ruby: 'ruby' };
 
 const state = { info: null, result: null, filter: 'problems', query: '', selected: null, scanning: false };

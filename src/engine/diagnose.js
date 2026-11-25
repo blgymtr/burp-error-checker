@@ -10,6 +10,7 @@ const py = require('./python');
 const { makeDisplay, scrubText } = require('./paths');
 
 const SEV_RANK = { error: 3, warning: 2, info: 1, ok: 0 };
+const NON_ASCII = { test: (s) => [...String(s || '')].some(c => c.charCodeAt(0) > 127) };
 
 function readManifest(dir) {
   const p = path.join(dir, 'BappManifest.bmf');
@@ -186,6 +187,30 @@ async function diagnose(opts = {}) {
     detail: jython.problem ? jython.problem.title + '. ' + jython.problem.detail : display(jythonPath) + ' · standalone, ' + jython.info.stdlib.length + ' standard library modules',
   });
   result.jython = { path: jythonPath || null, display: display(jythonPath), usable: jython.usable, version: jython.info && jython.info.version };
+
+  // Jython 2.7 on Windows cannot chdir into a folder with non-ASCII characters
+  // (for example a user name with "Ö"), so every Python extension under it fails.
+  const pyFiles = exts.filter(e => e.extension_type === 'python').map(e => resolveExtFile(configDir, e.extension_file)).filter(Boolean);
+  const badPy = pyFiles.filter(f => NON_ASCII.test(path.dirname(f)));
+  const shortCfg = NON_ASCII.test(configDir) ? locate.shortPath(configDir) : null;
+  const nonAsciiFinding = (dir) => ({
+    severity: 'error', code: 'non-ascii-path',
+    title: 'Jython cannot open folders with non-ASCII characters',
+    detail: 'The path of this extension\'s folder (' + display(dir) + ') contains characters outside plain ASCII, usually from the Windows user name (for example "Ö" or "ü"). ' +
+      'Jython 2.7 on Windows cannot change into such a folder, so Burp fails with "OSError: [Errno 2]" from PosixModule.chdir. Every Python extension in that folder fails this way, while Java extensions load fine.',
+    fix: [
+      'Start Burp with an ASCII-only settings folder by setting APPDATA to the 8.3 short name of the same folder' +
+        (shortCfg ? ' (' + path.dirname(shortCfg) + ')' : '') + '. For example a shortcut with the target: cmd /c "set APPDATA=' + (shortCfg ? path.dirname(shortCfg) : 'C:\\Users\\SHORTN~1\\AppData\\Roaming') + '&& start "" "<Burp folder>\\BurpSuite.exe""',
+      'For extensions you added by hand: move the .py files to an ASCII-only folder such as C:\\BurpExtensions\\ and add them again.',
+      'Or use a Windows account whose folder name only has ASCII letters.',
+    ],
+  });
+  if (badPy.length) {
+    envItem({
+      id: 'nonascii', label: 'Folder names (Jython)', status: 'error', value: 'Non-ASCII path',
+      detail: badPy.length + ' Python extension(s) live in a folder whose path has non-ASCII characters. Jython 2.7 cannot load them from there.',
+    });
+  }
 
   // modules folder for Python
   const modulesDir = pySettings.folder_for_loading_modules || '';
@@ -381,6 +406,12 @@ async function diagnose(opts = {}) {
         check('Jython available', 'error', jython.problem.title);
       } else {
         check('Jython available', 'ok', 'Jython ' + ((jython.info && jython.info.version) || ''));
+      }
+      if (NON_ASCII.test(path.dirname(file))) {
+        check('Folder path is plain ASCII (Jython limit)', 'error', 'non-ASCII characters in the path');
+        add(nonAsciiFinding(path.dirname(file)));
+      } else {
+        check('Folder path is plain ASCII (Jython limit)', 'ok', '');
       }
       const searchDirs = [modulesDir].filter(Boolean);
       const files = py.collectLocalFiles(file, searchDirs);

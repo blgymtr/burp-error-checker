@@ -128,3 +128,18 @@ test('real Jython compile finds Python 3 and syntax errors', { skip: !JY && 'set
   assert.strictEqual(sn.evidence.line, 6);
   assert.strictEqual(by['Header Fuzzer'].findings.filter(f => f.code === 'syntax' || f.code === 'python3').length, 0);
 });
+
+test('python extension in a non-ASCII folder is flagged', async () => {
+  const d = buildDemo({ root: tmp('demo5'), jythonJar: null });
+  const dir = path.join(d.root, 'Extensions', 'Ünïcode folder');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'ext.py'), 'from burp import IBurpExtender\n');
+  const cfg = JSON.parse(fs.readFileSync(d.configPath, 'utf8'));
+  cfg.user_options.extender.extensions.push({ name: 'Unicode Path Ext', extension_type: 'python', loaded: false, extension_file: path.join(dir, 'ext.py') });
+  fs.writeFileSync(d.configPath, JSON.stringify(cfg));
+  const r = await diagnose({ configPath: d.configPath, burpDir: d.burpDir, aliases: d.aliases, skipJython: true });
+  const e = r.extensions.find(x => x.name === 'Unicode Path Ext');
+  assert.ok(e.findings.some(f => f.code === 'non-ascii-path'));
+  assert.ok(r.environment.some(x => x.id === 'nonascii' && x.status === 'error'));
+  assert.ok(!statusByName(r)['Access Matrix'].findings.some(f => f.code === 'non-ascii-path'));
+});

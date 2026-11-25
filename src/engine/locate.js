@@ -122,7 +122,19 @@ function findJava(override, burpInstall, env = process.env) {
   return { path: null, tried };
 }
 
+// Windows 8.3 short name of an existing folder (ASCII-only when 8.3 names are enabled).
+function shortPath(p) {
+  if (!IS_WIN || !isDir(p)) return null;
+  try {
+    const r = spawnSync('cmd.exe', ['/d', '/s', '/c', 'for %I in ("' + p + '") do @echo %~sI'], { encoding: 'utf8', timeout: 10000, windowsHide: true, windowsVerbatimArguments: true });
+    const out = (r.stdout || '').split(String.fromCharCode(10)).map(s => s.trim()).filter(Boolean).pop();
+    const printable = out && [...out].every(c => c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127);
+    return printable && out !== p ? out : null;
+  } catch { return null; }
+}
+
 module.exports = {
+  shortPath,
   burpConfigDir, findConfigFiles, findBurpInstall, findJava, javaMajor, jreRelease,
   exists, isFile, isDir, IS_WIN,
 };

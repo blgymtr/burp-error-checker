@@ -51,7 +51,12 @@ No Node.js, Python or anything else is needed. Java is only used to run the Jyth
 | **Java (.jar)** | The archive opens and every class is readable; there is a `burp.BurpExtender` class or a class implementing Montoya's `BurpExtension`; the class-file version fits the Java runtime bundled with your Burp | *Compiled for Java 25, but Burp runs Java 21* |
 | **Python (.py)** | The main file and every local module it imports are compiled with **your real Jython JAR**; Python 3 features are named (f-strings, type hints, `async`) | *Python 3 code: Burp runs Jython 2.7* (with file and line) |
 | **Python imports** | Every `import` is matched against Jython's standard library, the extension folder and Burp's "Folder for loading modules"; imports inside `try/except` count as optional | *Missing Python module "requests"* |
+| **Folder names** | Python extensions under a path with non-ASCII characters (for example a Windows user name with `Ö` or `ü`) | *Jython cannot open folders with non-ASCII characters*, with the 8.3 short path to use instead |
 | **Environment** | Jython is configured, exists, is the *standalone* build and is not damaged; JRuby; module and library folders; Burp's Java version | *This is the plain Jython JAR, not the standalone one* |
+
+### A real-world case it catches
+
+Jython 2.7 on Windows cannot change into a folder whose path contains non-ASCII characters. When your Windows user name has one (say `Jürgen` or `Ömer`), the BApps live under `C:\Users\<name>\AppData\Roaming\BurpSuite\bapps` and **every Python extension fails** with `OSError: [Errno 2]` from `PosixModule.chdir`, while every Java extension loads fine. Burp's error text doesn't point at the cause. Burp Error Checker flags it, works out the 8.3 short name of the same folder (for example `C:\Users\JRGEN~1\AppData\Roaming`) and shows how to start Burp with it.
 
 If every check passes for an extension that is not loaded, the app says so plainly: the extension is either switched off or fails at runtime, and it tells you where Burp shows that runtime error.
 
